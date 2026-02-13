@@ -1,0 +1,50 @@
+shortcuts:
+  dictate: "<Ctrl><Super>d"
+  screenshot: "<Ctrl><Shift>s"
+  meeting: "<Ctrl><Super>m"
+
+whisper:
+  model: "large-v3"
+  language: "pt"
+  device: "cuda"
+  compute_type: "float16"
+
+ollama:
+  base_url: "http://localhost:11434"
+  cleanup_model: "llama3.2"
+  vision_model: "gemma3:12b"
+  cleanup_prompt: |
+    Você é um assistente de polimento de texto.
+    Receba texto transcrito de voz e retorne APENAS o texto limpo:
+    - Remova hesitações (uh, hmm, eh, tipo, né, então, assim)
+    - Adicione pontuação correta
+    - Corrija erros óbvios de transcrição
+    - Mantenha o significado original intacto
+    - Responda SOMENTE com o texto limpo, sem explicações ou prefácios.
+
+typing:
+  method: "clipboard"
+  delay_ms: 12
+
+audio:
+  sample_rate: 16000
+  channels: 1
+
+notifications:
+  enabled: true
+  sound: true
+
+meeting:
+  output_dir: "~/VisionFlow/meetings"
+  mic_source: "auto"
+  monitor_source: "auto"
+  sample_rate: 16000
+  summary_model: "llama3.2"
+  summary_prompt: |
+    Você é um assistente de atas de reunião.
+    Receba a transcrição de uma reunião e gere:
+    1. RESUMO: parágrafos curtos com os pontos principais
+    2. DECISÕES: lista de decisões tomadas
+    3. ACTION ITEMS: lista de tarefas com responsáveis (se mencionados)
+    4. TÓPICOS: lista dos assuntos discutidos
+    Formato: Markdown limpo e organizado.

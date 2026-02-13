@@ -1,0 +1,18 @@
+[Unit]
+Description=VisionFlow - Ditado por voz multimodal com IA
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/home/morcegod/Documents/lab/ai-meeting-notes/.venv/bin/visionflow serve --preload-model
+Restart=on-failure
+RestartSec=5
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+Environment=YDOTOOL_SOCKET=/run/user/1000/.ydotool_socket
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/home/morcegod/.local/bin
+
+[Install]
+WantedBy=default.target
