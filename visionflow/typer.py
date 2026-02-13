@@ -105,16 +105,23 @@ class Typer:
             self._type_clipboard(text)
 
     def _type_clipboard(self, text: str) -> None:
-        """Copia para clipboard via wl-copy e simula Ctrl+V."""
+        """Copia para clipboard via wl-copy e simula Ctrl+V.
+        
+        O wl-copy fica vivo para manter o texto no clipboard,
+        permitindo que o usuário cole novamente com Ctrl+V.
+        """
         print("[visionflow] Digitando via clipboard + Ctrl+V")
         try:
             if not _has_command("wl-copy"):
                 print("[visionflow] ERRO: wl-copy não encontrado. Instale: sudo pacman -S wl-clipboard")
                 return
 
+            # Mata o wl-copy anterior (se existir) antes de iniciar novo
+            self._kill_prev_wl_copy()
+
             # wl-copy no Wayland é um "clipboard owner" -- precisa ficar vivo
-            # até alguém consumir. Usamos Popen para não bloquear.
-            wl_proc = subprocess.Popen(
+            # para manter o conteúdo no clipboard. Mantemos vivo até o próximo uso.
+            self._wl_copy_proc = subprocess.Popen(
                 ["wl-copy", "--", text],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
@@ -144,14 +151,18 @@ class Typer:
             if not paste_ok:
                 print("[visionflow] AVISO: falha ao simular Ctrl+V. Texto está no clipboard, cole manualmente.")
 
-            # Dá tempo para o app consumir o clipboard, depois mata o wl-copy
-            time.sleep(0.3)
-            if wl_proc.poll() is None:
-                wl_proc.terminate()
-                try:
-                    wl_proc.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    wl_proc.kill()
+            # NÃO mata o wl-copy — ele fica vivo para o clipboard persistir.
+            # Será morto apenas quando um novo texto for copiado.
 
         except Exception as e:
             print(f"[visionflow] ERRO no clipboard: {e}")
+
+    def _kill_prev_wl_copy(self) -> None:
+        """Mata o processo wl-copy anterior, se existir."""
+        proc = getattr(self, "_wl_copy_proc", None)
+        if proc and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                proc.kill()

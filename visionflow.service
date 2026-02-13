@@ -5,7 +5,8 @@ Wants=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/home/morcegod/Documents/lab/ai-meeting-notes/.venv/bin/visionflow serve --preload-model
+WorkingDirectory=/home/morcegod/Documents/lab/ai-meeting-notes
+ExecStart=/home/morcegod/Documents/lab/ai-meeting-notes/.venv/bin/visionflow serve --preload-model -c /home/morcegod/Documents/lab/ai-meeting-notes/config.yaml
 Restart=on-failure
 RestartSec=5
 Environment=XDG_RUNTIME_DIR=/run/user/1000

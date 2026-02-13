@@ -29,7 +29,10 @@ class MeetingFiles:
 
 
 def detect_sources() -> dict[str, str]:
-    """Detecta automaticamente mic e monitor sources via pactl."""
+    """Detecta automaticamente mic e monitor sources via pactl.
+
+    Prioriza dispositivos USB (headsets) sobre HDMI/built-in.
+    """
     sources: dict[str, str] = {"mic": "", "monitor": ""}
 
     try:
@@ -40,19 +43,38 @@ def detect_sources() -> dict[str, str]:
         if result.returncode != 0:
             return sources
 
+        monitors: list[str] = []
+        mics: list[str] = []
+
         for line in result.stdout.strip().splitlines():
             parts = line.split("\t")
             if len(parts) < 2:
                 continue
             name = parts[1]
 
-            # Monitor source: termina em .monitor
-            if name.endswith(".monitor") and not sources["monitor"]:
-                sources["monitor"] = name
+            if name.endswith(".monitor"):
+                monitors.append(name)
+            elif "input" in name and not name.endswith(".monitor"):
+                mics.append(name)
 
-            # Mic source: input que NÃO é monitor
-            elif "input" in name and not name.endswith(".monitor") and not sources["mic"]:
-                sources["mic"] = name
+        # Prioriza USB (headsets) sobre HDMI/PCI (built-in/placa de video)
+        def _is_usb(name: str) -> bool:
+            return ".usb-" in name or ".usb_" in name
+
+        # Monitor: prefere USB, senão pega o primeiro
+        usb_monitors = [m for m in monitors if _is_usb(m)]
+        sources["monitor"] = usb_monitors[0] if usb_monitors else (monitors[0] if monitors else "")
+
+        # Mic: prefere USB, senão pega o primeiro
+        usb_mics = [m for m in mics if _is_usb(m)]
+        sources["mic"] = usb_mics[0] if usb_mics else (mics[0] if mics else "")
+
+        if monitors:
+            print(f"[visionflow] Monitors disponíveis: {monitors}")
+            print(f"[visionflow] Monitor selecionado: {sources['monitor']}")
+        if mics:
+            print(f"[visionflow] Mics disponíveis: {mics}")
+            print(f"[visionflow] Mic selecionado: {sources['mic']}")
 
     except Exception as e:
         print(f"[visionflow] AVISO: falha ao detectar sources: {e}")

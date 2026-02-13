@@ -48,6 +48,11 @@ class TypingConfig:
 
 
 @dataclass
+class DictateConfig:
+    capture_monitor: bool = False
+
+
+@dataclass
 class AudioConfig:
     sample_rate: int = 16000
     channels: int = 1
@@ -84,6 +89,7 @@ class VisionFlowConfig:
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
     typing: TypingConfig = field(default_factory=TypingConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
+    dictate: DictateConfig = field(default_factory=DictateConfig)
     notifications: NotificationConfig = field(default_factory=NotificationConfig)
     meeting: MeetingConfig = field(default_factory=MeetingConfig)
 
@@ -128,6 +134,8 @@ def load_config(path: str | Path | None = None) -> VisionFlowConfig:
                 _apply_dict(config.typing, raw["typing"])
             if "audio" in raw:
                 _apply_dict(config.audio, raw["audio"])
+            if "dictate" in raw:
+                _apply_dict(config.dictate, raw["dictate"])
             if "notifications" in raw:
                 _apply_dict(config.notifications, raw["notifications"])
             if "meeting" in raw:

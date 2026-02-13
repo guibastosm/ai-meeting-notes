@@ -67,3 +67,33 @@ class Transcriber:
         if result:
             print(f"[visionflow] Transcrição: {result[:100]}...")
         return result
+
+    def transcribe_with_timestamps(self, wav_bytes: bytes) -> list[tuple[float, float, str]]:
+        """Transcreve bytes WAV e retorna segmentos com timestamps: [(start, end, text), ...]."""
+        if not wav_bytes:
+            return []
+
+        model = self._ensure_model()
+        audio_file = io.BytesIO(wav_bytes)
+
+        segments, info = model.transcribe(
+            audio_file,
+            language=self._language if self._language else None,
+            beam_size=5,
+            vad_filter=True,
+            vad_parameters=dict(
+                min_silence_duration_ms=500,
+                speech_pad_ms=300,
+            ),
+        )
+
+        result: list[tuple[float, float, str]] = []
+        for segment in segments:
+            text = segment.text.strip()
+            if text:
+                result.append((segment.start, segment.end, text))
+
+        if result:
+            total_text = " ".join(t for _, _, t in result)
+            print(f"[visionflow] Transcrição ({len(result)} segs): {total_text[:100]}...")
+        return result

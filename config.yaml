@@ -30,6 +30,9 @@ audio:
   sample_rate: 16000
   channels: 1
 
+dictate:
+  capture_monitor: true  # captura audio do headset (o que voce ouve) alem do mic
+
 notifications:
   enabled: true
   sound: true

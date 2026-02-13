@@ -48,6 +48,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
         meeting_config=config.meeting,
         whisper_config=config.whisper,
         ollama_config=config.ollama,
+        capture_monitor=config.dictate.capture_monitor,
     )
     daemon = VisionFlowDaemon(app)
 

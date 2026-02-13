@@ -98,6 +98,38 @@ class VisionFlowDaemon:
             SOCKET_PATH.unlink()
 
 
+def _merge_speaker_segments(
+    mic_segments: list[tuple[float, float, str]],
+    monitor_segments: list[tuple[float, float, str]],
+) -> str:
+    """Intercala segmentos de mic e monitor por timestamp com labels [Eu]/[Outro]."""
+    tagged: list[tuple[float, str, str]] = []
+    for start, _end, text in mic_segments:
+        tagged.append((start, "[Eu]", text))
+    for start, _end, text in monitor_segments:
+        tagged.append((start, "[Outro]", text))
+
+    # Ordena por timestamp
+    tagged.sort(key=lambda x: x[0])
+
+    # Agrupa segmentos consecutivos do mesmo falante
+    parts: list[str] = []
+    current_speaker = ""
+    current_texts: list[str] = []
+    for _, speaker, text in tagged:
+        if speaker != current_speaker:
+            if current_texts:
+                parts.append(f"{current_speaker} {' '.join(current_texts)}")
+            current_speaker = speaker
+            current_texts = [text]
+        else:
+            current_texts.append(text)
+    if current_texts:
+        parts.append(f"{current_speaker} {' '.join(current_texts)}")
+
+    return "\n".join(parts)
+
+
 class VisionFlowApp:
     """Lógica da aplicação: gerencia estado e pipelines."""
 
@@ -112,6 +144,7 @@ class VisionFlowApp:
         meeting_config: "MeetingConfig | None" = None,
         whisper_config: "WhisperConfig | None" = None,
         ollama_config: "OllamaConfig | None" = None,
+        capture_monitor: bool = False,
     ) -> None:
         self._recorder = recorder
         self._transcriber = transcriber
@@ -122,10 +155,12 @@ class VisionFlowApp:
         self._meeting_config = meeting_config
         self._whisper_config = whisper_config
         self._ollama_config = ollama_config
+        self._capture_monitor = capture_monitor
         self._recording = False
         self._processing = False
         self._mode: str = ""  # "dictate", "screenshot", ou "meeting"
         self._meeting_recorder = None
+        self._dual_recorder = None  # DualRecorder para dictate com monitor
 
     def toggle_dictation(self) -> str:
         """Toggle gravação de ditado."""
@@ -139,12 +174,21 @@ class VisionFlowApp:
             # Iniciar gravação
             self._mode = "dictate"
             self._recording = True
-            self._recorder.start()
+
+            if self._capture_monitor:
+                from visionflow.recorder import DualRecorder
+                self._dual_recorder = DualRecorder(
+                    config=type("C", (), {"sample_rate": self._recorder.sample_rate, "channels": self._recorder.channels})()
+                )
+                self._dual_recorder.start()
+                print("[visionflow] ● Gravando ditado (mic + headset)...")
+            else:
+                self._recorder.start()
+                print("[visionflow] ● Gravando ditado...")
 
             from visionflow.notifier import notify_recording_start
             notify_recording_start(self._notif)
 
-            print("[visionflow] ● Gravando ditado...")
             return "OK recording"
         else:
             return f"BUSY modo={self._mode}"
@@ -199,7 +243,11 @@ class VisionFlowApp:
             print("[visionflow] ■ Reunião cancelada.")
             return "OK stopped"
         elif self._recording:
-            self._recorder.stop()
+            if self._dual_recorder:
+                self._dual_recorder.stop()
+                self._dual_recorder = None
+            else:
+                self._recorder.stop()
             self._recording = False
             self._mode = ""
             print("[visionflow] ■ Gravação cancelada.")
@@ -214,22 +262,39 @@ class VisionFlowApp:
         notify_recording_stop(self._notif)
 
         print("[visionflow] ■ Parando gravação...")
-        wav_bytes = self._recorder.stop()
-        self._recording = False
 
-        if not wav_bytes or len(wav_bytes) < 1000:
-            print("[visionflow] Gravação muito curta, ignorando.")
-            self._mode = ""
-            return "OK too_short"
+        if self._dual_recorder:
+            mic_bytes, monitor_bytes = self._dual_recorder.stop()
+            self._dual_recorder = None
+            self._recording = False
 
-        self._processing = True
-        threading.Thread(
-            target=self._process_dictation, args=(wav_bytes,), daemon=True
-        ).start()
+            if (not mic_bytes or len(mic_bytes) < 1000) and (not monitor_bytes or len(monitor_bytes) < 1000):
+                print("[visionflow] Gravação muito curta, ignorando.")
+                self._mode = ""
+                return "OK too_short"
+
+            self._processing = True
+            threading.Thread(
+                target=self._process_dictation_dual, args=(mic_bytes, monitor_bytes), daemon=True
+            ).start()
+        else:
+            wav_bytes = self._recorder.stop()
+            self._recording = False
+
+            if not wav_bytes or len(wav_bytes) < 1000:
+                print("[visionflow] Gravação muito curta, ignorando.")
+                self._mode = ""
+                return "OK too_short"
+
+            self._processing = True
+            threading.Thread(
+                target=self._process_dictation, args=(wav_bytes,), daemon=True
+            ).start()
+
         return "OK processing"
 
     def _process_dictation(self, wav_bytes: bytes) -> None:
-        """Pipeline: transcrição → IA cleanup → digitar."""
+        """Pipeline simples: transcrição → IA cleanup → digitar."""
         from visionflow.notifier import notify_done, notify_error
 
         try:
@@ -249,6 +314,43 @@ class VisionFlowApp:
 
         except Exception as e:
             print(f"[visionflow] ERRO no pipeline: {e}")
+            notify_error(str(e), self._notif)
+        finally:
+            self._processing = False
+            self._mode = ""
+
+    def _process_dictation_dual(self, mic_bytes: bytes, monitor_bytes: bytes) -> None:
+        """Pipeline dual: transcreve mic + monitor separadamente, merge com labels, cleanup, digitar."""
+        from visionflow.notifier import notify_done, notify_error
+
+        try:
+            # Transcreve mic (Eu)
+            print("[visionflow] Transcrevendo mic...")
+            mic_segments = self._transcriber.transcribe_with_timestamps(mic_bytes) if mic_bytes and len(mic_bytes) > 1000 else []
+
+            # Transcreve monitor (Outro)
+            print("[visionflow] Transcrevendo headset...")
+            monitor_segments = self._transcriber.transcribe_with_timestamps(monitor_bytes) if monitor_bytes and len(monitor_bytes) > 1000 else []
+
+            if not mic_segments and not monitor_segments:
+                print("[visionflow] Nenhuma fala detectada.")
+                notify_error("Nenhuma fala detectada", self._notif)
+                return
+
+            # Merge intercalado por timestamp com labels
+            labeled_text = _merge_speaker_segments(mic_segments, monitor_segments)
+            print(f"[visionflow] Conversa mesclada: {labeled_text[:120]}...")
+
+            # AI cleanup com suporte a labels
+            print("[visionflow] Polindo com IA...")
+            cleaned_text = self._cleanup.cleanup_conversation(labeled_text)
+
+            print(f"[visionflow] Digitando: {cleaned_text[:80]}...")
+            self._typer.type_text(cleaned_text)
+            notify_done(cleaned_text, self._notif)
+
+        except Exception as e:
+            print(f"[visionflow] ERRO no pipeline dual: {e}")
             notify_error(str(e), self._notif)
         finally:
             self._processing = False

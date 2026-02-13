@@ -58,3 +58,51 @@ class AICleanup:
         except Exception as e:
             print(f"[visionflow] ERRO no cleanup com IA: {e}")
             return raw_text
+
+    _CONVERSATION_PROMPT = (
+        "Você é um assistente de polimento de transcrições de conversa.\n"
+        "O texto contém labels [Eu] e [Outro] indicando quem falou.\n"
+        "Regras:\n"
+        "- MANTENHA os labels [Eu] e [Outro] exatamente como estão\n"
+        "- Remova hesitações (uh, hmm, eh, tipo, né, então, assim)\n"
+        "- Adicione pontuação correta\n"
+        "- Corrija erros óbvios de transcrição\n"
+        "- Mantenha o significado original intacto\n"
+        "- Responda SOMENTE com o texto limpo, sem explicações ou prefácios."
+    )
+
+    def cleanup_conversation(self, labeled_text: str) -> str:
+        """Polir conversa com labels [Eu]/[Outro], mantendo os labels."""
+        if not labeled_text.strip():
+            return ""
+
+        try:
+            response = httpx.post(
+                f"{self._base_url}/api/generate",
+                json={
+                    "model": self._model,
+                    "prompt": f"{self._CONVERSATION_PROMPT}\n\nTranscrição:\n{labeled_text}",
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.1,
+                        "num_predict": 4096,
+                    },
+                },
+                timeout=45.0,
+            )
+            response.raise_for_status()
+            data = response.json()
+            cleaned = data.get("response", "").strip()
+
+            if cleaned:
+                print(f"[visionflow] IA cleanup conversa: {cleaned[:100]}...")
+                return cleaned
+
+            return labeled_text
+
+        except httpx.ConnectError:
+            print("[visionflow] ERRO: Não foi possível conectar ao Ollama.")
+            return labeled_text
+        except Exception as e:
+            print(f"[visionflow] ERRO no cleanup conversa: {e}")
+            return labeled_text
