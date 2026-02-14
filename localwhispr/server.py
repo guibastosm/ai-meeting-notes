@@ -98,36 +98,21 @@ class LocalWhisprDaemon:
             SOCKET_PATH.unlink()
 
 
-def _merge_speaker_segments(
+def _merge_segments(
     mic_segments: list[tuple[float, float, str]],
     monitor_segments: list[tuple[float, float, str]],
 ) -> str:
-    """Interleave mic and monitor segments by timestamp with [Me]/[Other] labels."""
-    tagged: list[tuple[float, str, str]] = []
+    """Interleave mic and monitor segments by timestamp into a single text."""
+    all_segments: list[tuple[float, str]] = []
     for start, _end, text in mic_segments:
-        tagged.append((start, "[Me]", text))
+        all_segments.append((start, text))
     for start, _end, text in monitor_segments:
-        tagged.append((start, "[Other]", text))
+        all_segments.append((start, text))
 
     # Sort by timestamp
-    tagged.sort(key=lambda x: x[0])
+    all_segments.sort(key=lambda x: x[0])
 
-    # Group consecutive segments from the same speaker
-    parts: list[str] = []
-    current_speaker = ""
-    current_texts: list[str] = []
-    for _, speaker, text in tagged:
-        if speaker != current_speaker:
-            if current_texts:
-                parts.append(f"{current_speaker} {' '.join(current_texts)}")
-            current_speaker = speaker
-            current_texts = [text]
-        else:
-            current_texts.append(text)
-    if current_texts:
-        parts.append(f"{current_speaker} {' '.join(current_texts)}")
-
-    return "\n".join(parts)
+    return " ".join(text for _, text in all_segments)
 
 
 class LocalWhisprApp:
@@ -320,15 +305,13 @@ class LocalWhisprApp:
             self._mode = ""
 
     def _process_dictation_dual(self, mic_bytes: bytes, monitor_bytes: bytes) -> None:
-        """Dual pipeline: transcribe mic + monitor separately, merge with labels, cleanup, type."""
+        """Dual pipeline: transcribe mic + monitor separately, merge by timestamp, cleanup, type."""
         from localwhispr.notifier import notify_done, notify_error
 
         try:
-            # Transcribe mic (Me)
             print("[localwhispr] Transcribing mic...")
             mic_segments = self._transcriber.transcribe_with_timestamps(mic_bytes) if mic_bytes and len(mic_bytes) > 1000 else []
 
-            # Transcribe monitor (Other)
             print("[localwhispr] Transcribing headset...")
             monitor_segments = self._transcriber.transcribe_with_timestamps(monitor_bytes) if monitor_bytes and len(monitor_bytes) > 1000 else []
 
@@ -337,13 +320,13 @@ class LocalWhisprApp:
                 notify_error("No speech detected", self._notif)
                 return
 
-            # Merge interleaved by timestamp with labels
-            labeled_text = _merge_speaker_segments(mic_segments, monitor_segments)
-            print(f"[localwhispr] Merged conversation: {labeled_text[:120]}...")
+            # Merge interleaved by timestamp (no labels)
+            merged_text = _merge_segments(mic_segments, monitor_segments)
+            print(f"[localwhispr] Merged text: {merged_text[:120]}...")
 
-            # AI cleanup with label support
+            # AI cleanup (standard, no labels)
             print("[localwhispr] Polishing with AI...")
-            cleaned_text = self._cleanup.cleanup_conversation(labeled_text)
+            cleaned_text = self._cleanup.cleanup(merged_text)
 
             print(f"[localwhispr] Typing: {cleaned_text[:80]}...")
             self._typer.type_text(cleaned_text)

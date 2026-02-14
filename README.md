@@ -7,7 +7,7 @@ Open-source alternative to [Wispr Flow](https://wisprflow.ai), combining the bes
 ## Features
 
 - **AI-powered dictation**: speak naturally, AI removes hesitations, adds punctuation and formats text
-- **Dual mic + headset capture**: transcribes your voice and the audio you hear, with `[Me]` / `[Other]` labels
+- **Dual mic + headset capture**: transcribes your voice and the audio you hear, merged into a single text
 - **Screenshot + Voice Command**: speak a command, the AI sees your screen and responds
 - **Meeting Recording**: captures mic + system audio, transcribes and generates minutes with AI
 - **Multi-language**: automatic language detection (supports mixing languages in the same session)
@@ -260,7 +260,7 @@ journalctl --user -u localwhispr -f
 ### Usage examples
 
 1. **Dictation**: Open any editor, press `Ctrl+Super+D`, speak, press again. The polished text appears where the cursor is.
-2. **Dual dictation**: With `capture_monitor: true`, LocalWhispr captures your voice AND headset audio, labeling `[Me]` and `[Other]`.
+2. **Dual dictation**: With `capture_monitor: true`, LocalWhispr captures your voice AND headset audio, merging everything into a single transcription.
 3. **Screenshot**: With code on screen, press `Ctrl+Shift+S`, say "explain this code", press again. The AI analyzes the screen and types the explanation.
 4. **Meeting**: Join a call, press `Ctrl+Super+M`. When done, press again. Find the transcription and minutes in `~/LocalWhispr/meetings/`.
 
@@ -331,7 +331,7 @@ Shortcut → mic → faster-whisper (CUDA) → Ollama cleanup → wl-copy → Ct
 
 **Dictation (dual mic + headset):**
 ```
-Shortcut → mic + parecord monitor → faster-whisper ×2 → merge [Me]/[Other] → Ollama cleanup → wl-copy → Ctrl+V → App
+Shortcut → mic + parecord monitor → faster-whisper ×2 → merge by timestamp → Ollama cleanup → wl-copy → Ctrl+V → App
 ```
 
 **Screenshot + AI:**
