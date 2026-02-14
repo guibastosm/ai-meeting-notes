@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING
 import httpx
 
 if TYPE_CHECKING:
-    from visionflow.config import OllamaConfig
+    from localwhispr.config import OllamaConfig
 
 
 class AICleanup:
     """Usa Ollama para limpar e polir texto transcrito."""
 
     def __init__(self, config: OllamaConfig | None = None) -> None:
-        from visionflow.config import OllamaConfig as OC
+        from localwhispr.config import OllamaConfig as OC
 
         cfg = config or OC()
         self._base_url = cfg.base_url.rstrip("/")
@@ -45,18 +45,18 @@ class AICleanup:
             cleaned = data.get("response", "").strip()
 
             if cleaned:
-                print(f"[visionflow] IA cleanup: {cleaned[:100]}...")
+                print(f"[localwhispr] IA cleanup: {cleaned[:100]}...")
                 return cleaned
 
             # Fallback: retorna texto original se IA retornar vazio
             return raw_text
 
         except httpx.ConnectError:
-            print("[visionflow] ERRO: Não foi possível conectar ao Ollama. Está rodando?")
-            print(f"[visionflow] URL: {self._base_url}")
+            print("[localwhispr] ERRO: Não foi possível conectar ao Ollama. Está rodando?")
+            print(f"[localwhispr] URL: {self._base_url}")
             return raw_text
         except Exception as e:
-            print(f"[visionflow] ERRO no cleanup com IA: {e}")
+            print(f"[localwhispr] ERRO no cleanup com IA: {e}")
             return raw_text
 
     _CONVERSATION_PROMPT = (
@@ -95,14 +95,14 @@ class AICleanup:
             cleaned = data.get("response", "").strip()
 
             if cleaned:
-                print(f"[visionflow] IA cleanup conversa: {cleaned[:100]}...")
+                print(f"[localwhispr] IA cleanup conversa: {cleaned[:100]}...")
                 return cleaned
 
             return labeled_text
 
         except httpx.ConnectError:
-            print("[visionflow] ERRO: Não foi possível conectar ao Ollama.")
+            print("[localwhispr] ERRO: Não foi possível conectar ao Ollama.")
             return labeled_text
         except Exception as e:
-            print(f"[visionflow] ERRO no cleanup conversa: {e}")
+            print(f"[localwhispr] ERRO no cleanup conversa: {e}")
             return labeled_text

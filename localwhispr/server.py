@@ -1,4 +1,4 @@
-"""Daemon VisionFlow: escuta comandos via Unix socket."""
+"""Daemon LocalWhispr: escuta comandos via Unix socket."""
 
 from __future__ import annotations
 
@@ -8,13 +8,13 @@ import signal
 import sys
 from pathlib import Path
 
-SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "visionflow.sock"
+SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "localwhispr.sock"
 
 
-class VisionFlowDaemon:
+class LocalWhisprDaemon:
     """Daemon que escuta comandos via Unix socket e orquestra os pipelines."""
 
-    def __init__(self, app: "VisionFlowApp") -> None:
+    def __init__(self, app: "LocalWhisprApp") -> None:
         self._app = app
         self._server: asyncio.AbstractServer | None = None
 
@@ -62,7 +62,7 @@ class VisionFlowDaemon:
 
     def _shutdown(self) -> None:
         """Encerra o daemon."""
-        print("[visionflow] Encerrando daemon...")
+        print("[localwhispr] Encerrando daemon...")
         if self._server:
             self._server.close()
         asyncio.get_event_loop().stop()
@@ -79,11 +79,11 @@ class VisionFlowDaemon:
         # Permissão: apenas o usuário atual
         SOCKET_PATH.chmod(0o600)
 
-        print(f"[visionflow] Daemon escutando em {SOCKET_PATH}")
-        print("[visionflow] Pronto! Configure atalhos do GNOME para enviar comandos.")
-        print("[visionflow]   Ditado:     visionflow ctl dictate")
-        print("[visionflow]   Screenshot: visionflow ctl screenshot")
-        print("[visionflow]   Reunião:    visionflow ctl meeting")
+        print(f"[localwhispr] Daemon escutando em {SOCKET_PATH}")
+        print("[localwhispr] Pronto! Configure atalhos do GNOME para enviar comandos.")
+        print("[localwhispr]   Ditado:     localwhispr ctl dictate")
+        print("[localwhispr]   Screenshot: localwhispr ctl screenshot")
+        print("[localwhispr]   Reunião:    localwhispr ctl meeting")
         print()
 
         async with self._server:
@@ -130,7 +130,7 @@ def _merge_speaker_segments(
     return "\n".join(parts)
 
 
-class VisionFlowApp:
+class LocalWhisprApp:
     """Lógica da aplicação: gerencia estado e pipelines."""
 
     def __init__(
@@ -176,17 +176,17 @@ class VisionFlowApp:
             self._recording = True
 
             if self._capture_monitor:
-                from visionflow.recorder import DualRecorder
+                from localwhispr.recorder import DualRecorder
                 self._dual_recorder = DualRecorder(
                     config=type("C", (), {"sample_rate": self._recorder.sample_rate, "channels": self._recorder.channels})()
                 )
                 self._dual_recorder.start()
-                print("[visionflow] ● Gravando ditado (mic + headset)...")
+                print("[localwhispr] ● Gravando ditado (mic + headset)...")
             else:
                 self._recorder.start()
-                print("[visionflow] ● Gravando ditado...")
+                print("[localwhispr] ● Gravando ditado...")
 
-            from visionflow.notifier import notify_recording_start
+            from localwhispr.notifier import notify_recording_start
             notify_recording_start(self._notif)
 
             return "OK recording"
@@ -205,10 +205,10 @@ class VisionFlowApp:
             self._recording = True
             self._recorder.start()
 
-            from visionflow.notifier import notify_recording_start
+            from localwhispr.notifier import notify_recording_start
             notify_recording_start(self._notif)
 
-            print("[visionflow] ◉ Gravando comando + screenshot...")
+            print("[localwhispr] ◉ Gravando comando + screenshot...")
             return "OK recording"
         else:
             return f"BUSY modo={self._mode}"
@@ -240,7 +240,7 @@ class VisionFlowApp:
             self._meeting_recorder = None
             self._recording = False
             self._mode = ""
-            print("[visionflow] ■ Reunião cancelada.")
+            print("[localwhispr] ■ Reunião cancelada.")
             return "OK stopped"
         elif self._recording:
             if self._dual_recorder:
@@ -250,7 +250,7 @@ class VisionFlowApp:
                 self._recorder.stop()
             self._recording = False
             self._mode = ""
-            print("[visionflow] ■ Gravação cancelada.")
+            print("[localwhispr] ■ Gravação cancelada.")
             return "OK stopped"
         return "OK already_idle"
 
@@ -258,10 +258,10 @@ class VisionFlowApp:
         """Para gravação e inicia pipeline de ditado em thread."""
         import threading
 
-        from visionflow.notifier import notify_recording_stop
+        from localwhispr.notifier import notify_recording_stop
         notify_recording_stop(self._notif)
 
-        print("[visionflow] ■ Parando gravação...")
+        print("[localwhispr] ■ Parando gravação...")
 
         if self._dual_recorder:
             mic_bytes, monitor_bytes = self._dual_recorder.stop()
@@ -269,7 +269,7 @@ class VisionFlowApp:
             self._recording = False
 
             if (not mic_bytes or len(mic_bytes) < 1000) and (not monitor_bytes or len(monitor_bytes) < 1000):
-                print("[visionflow] Gravação muito curta, ignorando.")
+                print("[localwhispr] Gravação muito curta, ignorando.")
                 self._mode = ""
                 return "OK too_short"
 
@@ -282,7 +282,7 @@ class VisionFlowApp:
             self._recording = False
 
             if not wav_bytes or len(wav_bytes) < 1000:
-                print("[visionflow] Gravação muito curta, ignorando.")
+                print("[localwhispr] Gravação muito curta, ignorando.")
                 self._mode = ""
                 return "OK too_short"
 
@@ -295,25 +295,25 @@ class VisionFlowApp:
 
     def _process_dictation(self, wav_bytes: bytes) -> None:
         """Pipeline simples: transcrição → IA cleanup → digitar."""
-        from visionflow.notifier import notify_done, notify_error
+        from localwhispr.notifier import notify_done, notify_error
 
         try:
-            print("[visionflow] Transcrevendo...")
+            print("[localwhispr] Transcrevendo...")
             raw_text = self._transcriber.transcribe(wav_bytes)
             if not raw_text:
-                print("[visionflow] Nenhum texto detectado.")
+                print("[localwhispr] Nenhum texto detectado.")
                 notify_error("Nenhuma fala detectada", self._notif)
                 return
 
-            print("[visionflow] Polindo com IA...")
+            print("[localwhispr] Polindo com IA...")
             cleaned_text = self._cleanup.cleanup(raw_text)
 
-            print(f"[visionflow] Digitando: {cleaned_text[:80]}...")
+            print(f"[localwhispr] Digitando: {cleaned_text[:80]}...")
             self._typer.type_text(cleaned_text)
             notify_done(cleaned_text, self._notif)
 
         except Exception as e:
-            print(f"[visionflow] ERRO no pipeline: {e}")
+            print(f"[localwhispr] ERRO no pipeline: {e}")
             notify_error(str(e), self._notif)
         finally:
             self._processing = False
@@ -321,36 +321,36 @@ class VisionFlowApp:
 
     def _process_dictation_dual(self, mic_bytes: bytes, monitor_bytes: bytes) -> None:
         """Pipeline dual: transcreve mic + monitor separadamente, merge com labels, cleanup, digitar."""
-        from visionflow.notifier import notify_done, notify_error
+        from localwhispr.notifier import notify_done, notify_error
 
         try:
             # Transcreve mic (Eu)
-            print("[visionflow] Transcrevendo mic...")
+            print("[localwhispr] Transcrevendo mic...")
             mic_segments = self._transcriber.transcribe_with_timestamps(mic_bytes) if mic_bytes and len(mic_bytes) > 1000 else []
 
             # Transcreve monitor (Outro)
-            print("[visionflow] Transcrevendo headset...")
+            print("[localwhispr] Transcrevendo headset...")
             monitor_segments = self._transcriber.transcribe_with_timestamps(monitor_bytes) if monitor_bytes and len(monitor_bytes) > 1000 else []
 
             if not mic_segments and not monitor_segments:
-                print("[visionflow] Nenhuma fala detectada.")
+                print("[localwhispr] Nenhuma fala detectada.")
                 notify_error("Nenhuma fala detectada", self._notif)
                 return
 
             # Merge intercalado por timestamp com labels
             labeled_text = _merge_speaker_segments(mic_segments, monitor_segments)
-            print(f"[visionflow] Conversa mesclada: {labeled_text[:120]}...")
+            print(f"[localwhispr] Conversa mesclada: {labeled_text[:120]}...")
 
             # AI cleanup com suporte a labels
-            print("[visionflow] Polindo com IA...")
+            print("[localwhispr] Polindo com IA...")
             cleaned_text = self._cleanup.cleanup_conversation(labeled_text)
 
-            print(f"[visionflow] Digitando: {cleaned_text[:80]}...")
+            print(f"[localwhispr] Digitando: {cleaned_text[:80]}...")
             self._typer.type_text(cleaned_text)
             notify_done(cleaned_text, self._notif)
 
         except Exception as e:
-            print(f"[visionflow] ERRO no pipeline dual: {e}")
+            print(f"[localwhispr] ERRO no pipeline dual: {e}")
             notify_error(str(e), self._notif)
         finally:
             self._processing = False
@@ -360,15 +360,15 @@ class VisionFlowApp:
         """Para gravação e inicia pipeline de screenshot em thread."""
         import threading
 
-        from visionflow.notifier import notify_recording_stop
+        from localwhispr.notifier import notify_recording_stop
         notify_recording_stop(self._notif)
 
-        print("[visionflow] ■ Parando gravação de comando...")
+        print("[localwhispr] ■ Parando gravação de comando...")
         wav_bytes = self._recorder.stop()
         self._recording = False
 
         if not wav_bytes or len(wav_bytes) < 1000:
-            print("[visionflow] Gravação muito curta, ignorando.")
+            print("[localwhispr] Gravação muito curta, ignorando.")
             self._mode = ""
             return "OK too_short"
 
@@ -380,28 +380,28 @@ class VisionFlowApp:
 
     def _process_screenshot(self, wav_bytes: bytes) -> None:
         """Pipeline: transcrição → screenshot + LLM multimodal → digitar."""
-        from visionflow.notifier import notify_done, notify_error
+        from localwhispr.notifier import notify_done, notify_error
 
         try:
-            print("[visionflow] Transcrevendo comando...")
+            print("[localwhispr] Transcrevendo comando...")
             command_text = self._transcriber.transcribe(wav_bytes)
             if not command_text:
-                print("[visionflow] Nenhum comando detectado.")
+                print("[localwhispr] Nenhum comando detectado.")
                 notify_error("Nenhum comando detectado", self._notif)
                 return
 
-            print(f"[visionflow] Executando: {command_text[:80]}...")
+            print(f"[localwhispr] Executando: {command_text[:80]}...")
             result = self._screenshot_cmd.execute(command_text)
 
             if result:
-                print(f"[visionflow] Digitando resposta: {result[:80]}...")
+                print(f"[localwhispr] Digitando resposta: {result[:80]}...")
                 self._typer.type_text(result)
                 notify_done(result, self._notif)
             else:
                 notify_error("IA não retornou resposta", self._notif)
 
         except Exception as e:
-            print(f"[visionflow] ERRO no pipeline screenshot: {e}")
+            print(f"[localwhispr] ERRO no pipeline screenshot: {e}")
             notify_error(str(e), self._notif)
         finally:
             self._processing = False
@@ -411,8 +411,8 @@ class VisionFlowApp:
 
     def _start_meeting(self) -> str:
         """Inicia gravação de reunião."""
-        from visionflow.meeting import MeetingRecorder
-        from visionflow.notifier import notify, play_sound
+        from localwhispr.meeting import MeetingRecorder
+        from localwhispr.notifier import notify, play_sound
 
         if not self._meeting_config:
             return "ERR meeting_config ausente"
@@ -421,27 +421,27 @@ class VisionFlowApp:
             self._meeting_recorder = MeetingRecorder(self._meeting_config)
             output_dir = self._meeting_recorder.start()
         except RuntimeError as e:
-            print(f"[visionflow] ERRO ao iniciar meeting: {e}")
+            print(f"[localwhispr] ERRO ao iniciar meeting: {e}")
             return f"ERR {e}"
 
         self._mode = "meeting"
         self._recording = True
 
         play_sound("device-added", self._notif)
-        print(f"[visionflow] ● Gravando reunião em {output_dir}")
+        print(f"[localwhispr] ● Gravando reunião em {output_dir}")
         return "OK meeting_recording"
 
     def _stop_and_process_meeting(self) -> str:
         """Para gravação de reunião e inicia pós-processamento."""
         import threading
-        from visionflow.notifier import play_sound
+        from localwhispr.notifier import play_sound
 
         if not self._meeting_recorder:
             self._recording = False
             self._mode = ""
             return "ERR no_meeting_recorder"
 
-        print("[visionflow] ■ Parando gravação da reunião...")
+        print("[localwhispr] ■ Parando gravação da reunião...")
         play_sound("device-removed", self._notif)
 
         files = self._meeting_recorder.stop()
@@ -460,8 +460,8 @@ class VisionFlowApp:
 
     def _process_meeting(self, files) -> None:
         """Pipeline: transcrição chunked + ata IA."""
-        from visionflow.meeting_processor import process_meeting
-        from visionflow.notifier import notify, notify_error, play_sound
+        from localwhispr.meeting_processor import process_meeting
+        from localwhispr.notifier import notify, notify_error, play_sound
 
         try:
             results = process_meeting(
@@ -489,7 +489,7 @@ class VisionFlowApp:
                 notify_error("Nenhum conteúdo gerado da reunião", self._notif)
 
         except Exception as e:
-            print(f"[visionflow] ERRO no pipeline de meeting: {e}")
+            print(f"[localwhispr] ERRO no pipeline de meeting: {e}")
             notify_error(f"Erro no meeting: {e}", self._notif)
         finally:
             self._processing = False

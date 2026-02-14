@@ -1,4 +1,4 @@
-# VisionFlow
+# LocalWhispr
 
 Ditado por voz multimodal com IA para Linux (GNOME Wayland).
 Alternativa open-source ao [Wispr Flow](https://wisprflow.ai), combinando o melhor do
@@ -27,7 +27,7 @@ Alternativa open-source ao [Wispr Flow](https://wisprflow.ai), combinando o melh
 | **RAM** | 8 GB | 16 GB+ |
 | **CPU** | Qualquer x86_64 | - |
 
-> O VisionFlow funciona em CPU (`device: "cpu"` no config), mas a transcrição será **muito mais lenta**. Com CUDA, uma transcrição de 1 minuto leva ~3s; em CPU pode levar 30s+.
+> O LocalWhispr funciona em CPU (`device: "cpu"` no config), mas a transcrição será **muito mais lenta**. Com CUDA, uma transcrição de 1 minuto leva ~3s; em CPU pode levar 30s+.
 
 ### Software
 
@@ -136,7 +136,7 @@ ollama pull gemma3:12b
 
 > **Dica**: Se tiver pouca VRAM, use `llama3.2:1b` para cleanup e `llava:7b` para vision. Edite o `config.yaml` depois.
 
-### 4. Clonar e instalar o VisionFlow
+### 4. Clonar e instalar o LocalWhispr
 
 ```bash
 git clone https://github.com/guibastosm/ai-meeting-notes.git
@@ -189,7 +189,7 @@ dictate:
   capture_monitor: true          # captura áudio do headset além do mic
 
 meeting:
-  output_dir: "~/VisionFlow/meetings"
+  output_dir: "~/LocalWhispr/meetings"
   summary_model: "llama3.2"
 ```
 
@@ -206,47 +206,47 @@ meeting:
 
 ```bash
 source .venv/bin/activate
-visionflow setup-shortcuts
+localwhispr setup-shortcuts
 ```
 
 Isso registra os atalhos definidos no `config.yaml` como custom shortcuts do GNOME.
 
-### 7. Iniciar o VisionFlow
+### 7. Iniciar o LocalWhispr
 
 #### Opção A: Direto no terminal (para testar)
 
 ```bash
 source .venv/bin/activate
-visionflow serve --preload-model
+localwhispr serve --preload-model
 ```
 
 #### Opção B: Como serviço systemd (recomendado)
 
 O serviço systemd inicia automaticamente no boot e roda em background.
 
-**Importante**: Edite o `visionflow.service` antes de copiar, substituindo os caminhos para o seu usuário:
+**Importante**: Edite o `localwhispr.service` antes de copiar, substituindo os caminhos para o seu usuário:
 
 ```bash
 # Edite o arquivo com seus caminhos
-sed -i "s|/home/morcegod|$HOME|g" visionflow.service
-sed -i "s|/run/user/1000|/run/user/$(id -u)|g" visionflow.service
+sed -i "s|/home/morcegod|$HOME|g" localwhispr.service
+sed -i "s|/run/user/1000|/run/user/$(id -u)|g" localwhispr.service
 
 # Copie para o systemd do usuário
 mkdir -p ~/.config/systemd/user
-cp visionflow.service ~/.config/systemd/user/
+cp localwhispr.service ~/.config/systemd/user/
 
 # Ative e inicie
 systemctl --user daemon-reload
-systemctl --user enable --now visionflow
+systemctl --user enable --now localwhispr
 
 # Verifique se está rodando
-systemctl --user status visionflow
+systemctl --user status localwhispr
 ```
 
 Para ver os logs em tempo real:
 
 ```bash
-journalctl --user -u visionflow -f
+journalctl --user -u localwhispr -f
 ```
 
 ## Uso
@@ -260,9 +260,9 @@ journalctl --user -u visionflow -f
 ### Exemplos de uso
 
 1. **Ditado**: Abra qualquer editor, pressione `Ctrl+Super+D`, fale, pressione de novo. O texto polido aparece onde o cursor estiver.
-2. **Ditado dual**: Com `capture_monitor: true`, o VisionFlow captura sua voz E o áudio do headset, rotulando `[Eu]` e `[Outro]`.
+2. **Ditado dual**: Com `capture_monitor: true`, o LocalWhispr captura sua voz E o áudio do headset, rotulando `[Eu]` e `[Outro]`.
 3. **Screenshot**: Com código na tela, pressione `Ctrl+Shift+S`, diga "explique esse codigo", pressione de novo. A IA analisa a tela e digita a explicação.
-4. **Reunião**: Entre numa call, pressione `Ctrl+Super+M`. Ao final, pressione de novo. Encontre a transcrição e ata em `~/VisionFlow/meetings/`.
+4. **Reunião**: Entre numa call, pressione `Ctrl+Super+M`. Ao final, pressione de novo. Encontre a transcrição e ata em `~/LocalWhispr/meetings/`.
 
 ### Feedback sonoro
 
@@ -275,7 +275,7 @@ journalctl --user -u visionflow -f
 ### Estrutura de saída da reunião
 
 ```
-~/VisionFlow/meetings/2026-02-12_17-30/
+~/LocalWhispr/meetings/2026-02-12_17-30/
   mic.wav              # Áudio do microfone (sua voz)
   system.wav           # Áudio do sistema (o que você ouve)
   combined.wav         # Mix dos dois canais
@@ -286,13 +286,13 @@ journalctl --user -u visionflow -f
 ### Comandos do daemon
 
 ```bash
-visionflow ctl dictate      # Toggle ditado
-visionflow ctl screenshot   # Toggle screenshot + IA
-visionflow ctl meeting      # Toggle gravação de reunião
-visionflow ctl status       # Verifica status
-visionflow ctl stop         # Cancela gravação
-visionflow ctl ping         # Verifica se daemon está vivo
-visionflow ctl quit         # Encerra o daemon
+localwhispr ctl dictate      # Toggle ditado
+localwhispr ctl screenshot   # Toggle screenshot + IA
+localwhispr ctl meeting      # Toggle gravação de reunião
+localwhispr ctl status       # Verifica status
+localwhispr ctl stop         # Cancela gravação
+localwhispr ctl ping         # Verifica se daemon está vivo
+localwhispr ctl quit         # Encerra o daemon
 ```
 
 ## Arquitetura
@@ -317,7 +317,7 @@ visionflow ctl quit         # Encerra o daemon
 │     →Ollama     multimodal     ata/resumo                        │
 │      cleanup      │          │                                   │
 │           │        ▼          ▼                                   │
-│           ▼    wl-copy→App  ~/VisionFlow/meetings/               │
+│           ▼    wl-copy→App  ~/LocalWhispr/meetings/               │
 │       wl-copy→App                                                │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -342,16 +342,16 @@ Atalho → mic → faster-whisper → PrintScreen → wl-paste → base64 → Ol
 **Reunião:**
 ```
 Atalho → parecord (mic) + parecord (monitor) → [grava em disco]
-      → Atalho (stop) → mix áudio → faster-whisper chunked → Ollama ata → ~/VisionFlow/meetings/
+      → Atalho (stop) → mix áudio → faster-whisper chunked → Ollama ata → ~/LocalWhispr/meetings/
 ```
 
 ## Troubleshooting
 
 **"Daemon não está rodando"**
 ```bash
-visionflow serve --preload-model
+localwhispr serve --preload-model
 # ou
-systemctl --user restart visionflow
+systemctl --user restart localwhispr
 ```
 
 **"ydotoold não está rodando"**

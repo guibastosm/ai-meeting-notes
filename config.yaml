@@ -38,7 +38,7 @@ notifications:
   sound: true
 
 meeting:
-  output_dir: "~/VisionFlow/meetings"
+  output_dir: "~/LocalWhispr/meetings"
   mic_source: "auto"
   monitor_source: "auto"
   sample_rate: 16000

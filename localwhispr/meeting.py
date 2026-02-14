@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from visionflow.config import MeetingConfig
+    from localwhispr.config import MeetingConfig
 
 
 @dataclass
@@ -70,14 +70,14 @@ def detect_sources() -> dict[str, str]:
         sources["mic"] = usb_mics[0] if usb_mics else (mics[0] if mics else "")
 
         if monitors:
-            print(f"[visionflow] Monitors disponíveis: {monitors}")
-            print(f"[visionflow] Monitor selecionado: {sources['monitor']}")
+            print(f"[localwhispr] Monitors disponíveis: {monitors}")
+            print(f"[localwhispr] Monitor selecionado: {sources['monitor']}")
         if mics:
-            print(f"[visionflow] Mics disponíveis: {mics}")
-            print(f"[visionflow] Mic selecionado: {sources['mic']}")
+            print(f"[localwhispr] Mics disponíveis: {mics}")
+            print(f"[localwhispr] Mic selecionado: {sources['mic']}")
 
     except Exception as e:
-        print(f"[visionflow] AVISO: falha ao detectar sources: {e}")
+        print(f"[localwhispr] AVISO: falha ao detectar sources: {e}")
 
     return sources
 
@@ -86,7 +86,7 @@ class MeetingRecorder:
     """Grava reunião capturando mic + monitor via pw-record (PipeWire)."""
 
     def __init__(self, config: MeetingConfig | None = None) -> None:
-        from visionflow.config import MeetingConfig as MC
+        from localwhispr.config import MeetingConfig as MC
 
         cfg = config or MC()
         self._output_base = Path(cfg.output_dir).expanduser()
@@ -131,8 +131,8 @@ class MeetingRecorder:
                 "Nenhum monitor source detectado. Configure 'monitor_source' no config.yaml"
             )
 
-        print(f"[visionflow] Mic source:     {mic_src}")
-        print(f"[visionflow] Monitor source: {monitor_src}")
+        print(f"[localwhispr] Mic source:     {mic_src}")
+        print(f"[localwhispr] Monitor source: {monitor_src}")
 
         # Cria diretório de saída
         self._started_at = datetime.now()
@@ -169,7 +169,7 @@ class MeetingRecorder:
         )
 
         self._recording = True
-        print(f"[visionflow] Gravando reunião em: {self._output_dir}")
+        print(f"[localwhispr] Gravando reunião em: {self._output_dir}")
         return self._output_dir
 
     def stop(self) -> MeetingFiles | None:
@@ -193,7 +193,7 @@ class MeetingRecorder:
                     except subprocess.TimeoutExpired:
                         proc.kill()
                 except Exception as e:
-                    print(f"[visionflow] AVISO: erro ao parar {name}: {e}")
+                    print(f"[localwhispr] AVISO: erro ao parar {name}: {e}")
 
         self._mic_proc = None
         self._monitor_proc = None
@@ -204,16 +204,16 @@ class MeetingRecorder:
 
         for p in [self._mic_path, self._monitor_path]:
             if not p.exists():
-                print(f"[visionflow] AVISO: arquivo não encontrado: {p}")
+                print(f"[localwhispr] AVISO: arquivo não encontrado: {p}")
             else:
                 size_kb = p.stat().st_size / 1024
-                print(f"[visionflow] {p.name}: {size_kb:.1f} KB")
+                print(f"[localwhispr] {p.name}: {size_kb:.1f} KB")
 
         # Mix dos dois canais
         combined_path = self._output_dir / "combined.wav"
         self._mix_audio(self._mic_path, self._monitor_path, combined_path)
 
-        print(f"[visionflow] Gravação finalizada ({duration:.0f}s)")
+        print(f"[localwhispr] Gravação finalizada ({duration:.0f}s)")
 
         return MeetingFiles(
             output_dir=self._output_dir,
@@ -231,7 +231,7 @@ class MeetingRecorder:
             monitor_data = self._read_wav_as_mono_16k(monitor_path)
 
             if mic_data is None and monitor_data is None:
-                print("[visionflow] AVISO: nenhum áudio para mixar")
+                print("[localwhispr] AVISO: nenhum áudio para mixar")
                 return
 
             # Se só tem um dos dois, usa ele
@@ -256,10 +256,10 @@ class MeetingRecorder:
                 wf.writeframes(combined.tobytes())
 
             size_kb = output_path.stat().st_size / 1024
-            print(f"[visionflow] combined.wav: {size_kb:.1f} KB ({len(combined)/self._sample_rate:.0f}s)")
+            print(f"[localwhispr] combined.wav: {size_kb:.1f} KB ({len(combined)/self._sample_rate:.0f}s)")
 
         except Exception as e:
-            print(f"[visionflow] ERRO ao mixar áudio: {e}")
+            print(f"[localwhispr] ERRO ao mixar áudio: {e}")
 
     def _read_wav_as_mono_16k(self, path: Path) -> np.ndarray | None:
         """Lê WAV, converte para mono 16kHz int16."""
@@ -273,7 +273,7 @@ class MeetingRecorder:
                 n_frames = wf.getnframes()
                 raw = wf.readframes(n_frames)
 
-            print(f"[visionflow] {path.name}: {n_channels}ch {sample_rate}Hz {sample_width*8}bit {n_frames} frames")
+            print(f"[localwhispr] {path.name}: {n_channels}ch {sample_rate}Hz {sample_width*8}bit {n_frames} frames")
 
             # Converte para int16 (se for s32, reduz)
             if sample_width == 4:
@@ -282,7 +282,7 @@ class MeetingRecorder:
             elif sample_width == 2:
                 data = np.frombuffer(raw, dtype=np.int16)
             else:
-                print(f"[visionflow] AVISO: sample_width={sample_width} não suportado")
+                print(f"[localwhispr] AVISO: sample_width={sample_width} não suportado")
                 return None
 
             # Converte para mono (média dos canais)
@@ -298,9 +298,9 @@ class MeetingRecorder:
                 data = np.interp(indices, np.arange(len(data)), data.astype(np.float64)).astype(np.int16)
 
             rms = np.sqrt(np.mean(data.astype(np.float64)**2))
-            print(f"[visionflow] {path.name} → mono 16kHz: {len(data)} samples, RMS={rms:.1f}")
+            print(f"[localwhispr] {path.name} → mono 16kHz: {len(data)} samples, RMS={rms:.1f}")
             return data
 
         except Exception as e:
-            print(f"[visionflow] AVISO: erro ao ler {path.name}: {e}")
+            print(f"[localwhispr] AVISO: erro ao ler {path.name}: {e}")
             return None

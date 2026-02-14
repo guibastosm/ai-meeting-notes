@@ -1,4 +1,4 @@
-"""Carrega e valida a configuração do VisionFlow."""
+"""Carrega e valida a configuração do LocalWhispr."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ class NotificationConfig:
 
 @dataclass
 class MeetingConfig:
-    output_dir: str = "~/VisionFlow/meetings"
+    output_dir: str = "~/LocalWhispr/meetings"
     mic_source: str = "auto"
     monitor_source: str = "auto"
     sample_rate: int = 16000
@@ -83,7 +83,7 @@ class MeetingConfig:
 
 
 @dataclass
-class VisionFlowConfig:
+class LocalWhisprConfig:
     shortcuts: ShortcutConfig = field(default_factory=ShortcutConfig)
     whisper: WhisperConfig = field(default_factory=WhisperConfig)
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
@@ -101,11 +101,11 @@ def _apply_dict(dc: Any, data: dict) -> None:
             setattr(dc, key, value)
 
 
-def load_config(path: str | Path | None = None) -> VisionFlowConfig:
+def load_config(path: str | Path | None = None) -> LocalWhisprConfig:
     """Carrega configuração do YAML. Procura em ordem:
     1. Caminho explícito
     2. ./config.yaml
-    3. ~/.config/visionflow/config.yaml
+    3. ~/.config/localwhispr/config.yaml
     """
     search_paths: list[Path] = []
 
@@ -114,10 +114,10 @@ def load_config(path: str | Path | None = None) -> VisionFlowConfig:
 
     search_paths.extend([
         Path.cwd() / "config.yaml",
-        Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "visionflow" / "config.yaml",
+        Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "localwhispr" / "config.yaml",
     ])
 
-    config = VisionFlowConfig()
+    config = LocalWhisprConfig()
 
     for p in search_paths:
         if p.is_file():
@@ -141,8 +141,8 @@ def load_config(path: str | Path | None = None) -> VisionFlowConfig:
             if "meeting" in raw:
                 _apply_dict(config.meeting, raw["meeting"])
 
-            print(f"[visionflow] Config carregado de: {p}")
+            print(f"[localwhispr] Config carregado de: {p}")
             return config
 
-    print("[visionflow] Nenhum config.yaml encontrado, usando padrões.")
+    print("[localwhispr] Nenhum config.yaml encontrado, usando padrões.")
     return config

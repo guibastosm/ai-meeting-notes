@@ -10,7 +10,7 @@ from typing import Callable
 import evdev
 from evdev import InputDevice, ecodes
 
-from visionflow.config import HotkeyConfig
+from localwhispr.config import HotkeyConfig
 
 
 def _find_keyboard_devices() -> list[InputDevice]:
@@ -78,20 +78,20 @@ class HotkeyListener:
         """Loop principal de escuta de hotkeys."""
         devices = _find_keyboard_devices()
         if not devices:
-            print("[visionflow] ERRO: Nenhum teclado encontrado.")
-            print("[visionflow] Verifique se seu usuário está no grupo 'input':")
-            print("[visionflow]   sudo usermod -aG input $USER")
-            print("[visionflow]   (requer logout/login)")
+            print("[localwhispr] ERRO: Nenhum teclado encontrado.")
+            print("[localwhispr] Verifique se seu usuário está no grupo 'input':")
+            print("[localwhispr]   sudo usermod -aG input $USER")
+            print("[localwhispr]   (requer logout/login)")
             return
 
-        print(f"[visionflow] Escutando {len(devices)} dispositivo(s) de teclado")
+        print(f"[localwhispr] Escutando {len(devices)} dispositivo(s) de teclado")
         for dev in devices:
-            print(f"[visionflow]   - {dev.name} ({dev.path})")
+            print(f"[localwhispr]   - {dev.name} ({dev.path})")
 
         dict_names = " + ".join(self._config.dictation)
         screenshot_names = " + ".join(self._config.screenshot_command)
-        print(f"[visionflow] Hotkeys: ditado={dict_names}, screenshot={screenshot_names}")
-        print(f"[visionflow] Modo: {self._mode}")
+        print(f"[localwhispr] Hotkeys: ditado={dict_names}, screenshot={screenshot_names}")
+        print(f"[localwhispr] Modo: {self._mode}")
 
         tasks = [asyncio.create_task(self._listen_device(dev)) for dev in devices]
         await asyncio.gather(*tasks)
@@ -114,7 +114,7 @@ class HotkeyListener:
                     self._pressed_keys.discard(code)
 
         except (OSError, IOError) as e:
-            print(f"[visionflow] Dispositivo desconectado: {device.name} ({e})")
+            print(f"[localwhispr] Dispositivo desconectado: {device.name} ({e})")
 
     def _handle_key_down(self) -> None:
         """Processa tecla pressionada."""

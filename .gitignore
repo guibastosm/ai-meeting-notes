@@ -30,7 +30,7 @@ Thumbs.db
 *.log
 
 # Meeting recordings (large audio files)
-~/VisionFlow/
+~/LocalWhispr/
 
 # Whisper models cache
 whisper_models/

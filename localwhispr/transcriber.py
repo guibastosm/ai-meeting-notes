@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 from faster_whisper import WhisperModel
 
 if TYPE_CHECKING:
-    from visionflow.config import WhisperConfig
+    from localwhispr.config import WhisperConfig
 
 
 class Transcriber:
     """Wrapper sobre faster-whisper com suporte a CUDA."""
 
     def __init__(self, config: WhisperConfig | None = None) -> None:
-        from visionflow.config import WhisperConfig as WC
+        from localwhispr.config import WhisperConfig as WC
 
         cfg = config or WC()
         self._language = cfg.language
@@ -28,7 +28,7 @@ class Transcriber:
     def _ensure_model(self) -> WhisperModel:
         if self._model is None:
             print(
-                f"[visionflow] Carregando modelo Whisper '{self._model_name}' "
+                f"[localwhispr] Carregando modelo Whisper '{self._model_name}' "
                 f"(device={self._device}, compute={self._compute_type})..."
             )
             t0 = time.time()
@@ -37,7 +37,7 @@ class Transcriber:
                 device=self._device,
                 compute_type=self._compute_type,
             )
-            print(f"[visionflow] Modelo carregado em {time.time() - t0:.1f}s")
+            print(f"[localwhispr] Modelo carregado em {time.time() - t0:.1f}s")
         return self._model
 
     def transcribe(self, wav_bytes: bytes) -> str:
@@ -65,7 +65,7 @@ class Transcriber:
 
         result = " ".join(text_parts).strip()
         if result:
-            print(f"[visionflow] Transcrição: {result[:100]}...")
+            print(f"[localwhispr] Transcrição: {result[:100]}...")
         return result
 
     def transcribe_with_timestamps(self, wav_bytes: bytes) -> list[tuple[float, float, str]]:
@@ -95,5 +95,5 @@ class Transcriber:
 
         if result:
             total_text = " ".join(t for _, _, t in result)
-            print(f"[visionflow] Transcrição ({len(result)} segs): {total_text[:100]}...")
+            print(f"[localwhispr] Transcrição ({len(result)} segs): {total_text[:100]}...")
         return result

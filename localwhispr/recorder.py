@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import sounddevice as sd
 
-from visionflow.config import AudioConfig
+from localwhispr.config import AudioConfig
 
 
 class AudioRecorder:
@@ -106,7 +106,7 @@ class DualRecorder:
 
         # Detecta monitor source se não especificado
         if not monitor_source:
-            from visionflow.meeting import detect_sources
+            from localwhispr.meeting import detect_sources
             sources = detect_sources()
             monitor_source = sources.get("monitor", "")
 
@@ -128,12 +128,12 @@ class DualRecorder:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.PIPE,
                 )
-                print(f"[visionflow] Monitor source: {monitor_source}")
+                print(f"[localwhispr] Monitor source: {monitor_source}")
             except Exception as e:
-                print(f"[visionflow] AVISO: falha ao iniciar parecord: {e}")
+                print(f"[localwhispr] AVISO: falha ao iniciar parecord: {e}")
                 self._monitor_proc = None
         else:
-            print("[visionflow] AVISO: nenhum monitor source detectado, capturando só mic")
+            print("[localwhispr] AVISO: nenhum monitor source detectado, capturando só mic")
 
         self._recording = True
 
@@ -160,7 +160,7 @@ class DualRecorder:
                 except subprocess.TimeoutExpired:
                     self._monitor_proc.kill()
             except Exception as e:
-                print(f"[visionflow] AVISO: erro ao parar monitor: {e}")
+                print(f"[localwhispr] AVISO: erro ao parar monitor: {e}")
 
         self._monitor_proc = None
 
@@ -169,7 +169,7 @@ class DualRecorder:
             monitor_path = Path(self._monitor_tmpfile)
             if monitor_path.exists() and monitor_path.stat().st_size > 100:
                 monitor_bytes = self._read_and_normalize(monitor_path)
-                print(f"[visionflow] Monitor: {len(monitor_bytes)} bytes")
+                print(f"[localwhispr] Monitor: {len(monitor_bytes)} bytes")
             monitor_path.unlink(missing_ok=True)
             self._monitor_tmpfile = ""
 
@@ -215,5 +215,5 @@ class DualRecorder:
             return buf.getvalue()
 
         except Exception as e:
-            print(f"[visionflow] AVISO: erro ao normalizar monitor WAV: {e}")
+            print(f"[localwhispr] AVISO: erro ao normalizar monitor WAV: {e}")
             return b""

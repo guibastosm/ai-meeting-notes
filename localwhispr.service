@@ -1,14 +1,14 @@
 [Unit]
-Description=VisionFlow - Ditado por voz multimodal com IA
+Description=LocalWhispr - Ditado por voz multimodal com IA
 After=graphical-session.target
 Wants=graphical-session.target
 
 [Service]
 Type=simple
 # IMPORTANTE: Edite os caminhos abaixo para o seu usuário/diretório
-# Ou use: sed -i "s|/home/USER|$HOME|g" visionflow.service
+# Ou use: sed -i "s|/home/USER|$HOME|g" localwhispr.service
 WorkingDirectory=/home/USER/ai-meeting-notes
-ExecStart=/home/USER/ai-meeting-notes/.venv/bin/visionflow serve --preload-model -c /home/USER/ai-meeting-notes/config.yaml
+ExecStart=/home/USER/ai-meeting-notes/.venv/bin/localwhispr serve --preload-model -c /home/USER/ai-meeting-notes/config.yaml
 Restart=on-failure
 RestartSec=5
 Environment=XDG_RUNTIME_DIR=/run/user/1000

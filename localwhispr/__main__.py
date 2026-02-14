@@ -1,4 +1,4 @@
-"""Entry point do VisionFlow."""
+"""Entry point do LocalWhispr."""
 
 from __future__ import annotations
 
@@ -9,17 +9,17 @@ import sys
 
 
 def cmd_serve(args: argparse.Namespace) -> None:
-    """Inicia o daemon VisionFlow."""
-    from visionflow.config import load_config
-    from visionflow.recorder import AudioRecorder
-    from visionflow.transcriber import Transcriber
-    from visionflow.ai_cleanup import AICleanup
-    from visionflow.screenshot import ScreenshotCommand
-    from visionflow.typer import Typer
-    from visionflow.server import VisionFlowApp, VisionFlowDaemon
+    """Inicia o daemon LocalWhispr."""
+    from localwhispr.config import load_config
+    from localwhispr.recorder import AudioRecorder
+    from localwhispr.transcriber import Transcriber
+    from localwhispr.ai_cleanup import AICleanup
+    from localwhispr.screenshot import ScreenshotCommand
+    from localwhispr.typer import Typer
+    from localwhispr.server import LocalWhisprApp, LocalWhisprDaemon
 
     print("=" * 60)
-    print("  VisionFlow v0.1.0")
+    print("  LocalWhispr v0.1.0")
     print("  Ditado por voz multimodal com IA para Linux")
     print("=" * 60)
 
@@ -34,11 +34,11 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
     # Pré-carrega modelo se solicitado
     if args.preload_model:
-        print("[visionflow] Pré-carregando modelo Whisper...")
+        print("[localwhispr] Pré-carregando modelo Whisper...")
         transcriber._ensure_model()
 
     # Cria app e daemon
-    app = VisionFlowApp(
+    app = LocalWhisprApp(
         recorder=recorder,
         transcriber=transcriber,
         cleanup=cleanup,
@@ -50,13 +50,13 @@ def cmd_serve(args: argparse.Namespace) -> None:
         ollama_config=config.ollama,
         capture_monitor=config.dictate.capture_monitor,
     )
-    daemon = VisionFlowDaemon(app)
+    daemon = LocalWhisprDaemon(app)
 
     # Event loop
     loop = asyncio.new_event_loop()
 
     def shutdown(sig: int, _: object) -> None:
-        print(f"\n[visionflow] Recebido sinal {sig}, encerrando...")
+        print(f"\n[localwhispr] Recebido sinal {sig}, encerrando...")
         loop.call_soon_threadsafe(loop.stop)
 
     signal.signal(signal.SIGINT, shutdown)
@@ -65,7 +65,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
     try:
         loop.run_until_complete(daemon.start())
     except KeyboardInterrupt:
-        print("\n[visionflow] Encerrado pelo usuário.")
+        print("\n[localwhispr] Encerrado pelo usuário.")
     finally:
         loop.run_until_complete(daemon.cleanup())
         loop.close()
@@ -73,14 +73,14 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
 def cmd_ctl(args: argparse.Namespace) -> None:
     """Envia comando ao daemon."""
-    from visionflow.ctl import ctl_main
+    from localwhispr.ctl import ctl_main
     ctl_main(args.command)
 
 
 def cmd_setup_shortcuts(args: argparse.Namespace) -> None:
     """Registra atalhos no GNOME, usando config.yaml como fonte dos bindings."""
-    from visionflow.config import load_config
-    from visionflow.shortcuts import setup_gnome_shortcuts
+    from localwhispr.config import load_config
+    from localwhispr.shortcuts import setup_gnome_shortcuts
 
     config = load_config(args.config if hasattr(args, "config") else None)
 
@@ -98,15 +98,15 @@ def cmd_setup_shortcuts(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="visionflow",
-        description="VisionFlow: Ditado por voz multimodal com IA para Linux",
+        prog="localwhispr",
+        description="LocalWhispr: Ditado por voz multimodal com IA para Linux",
     )
     subparsers = parser.add_subparsers(dest="subcmd")
 
     # --- serve ---
     p_serve = subparsers.add_parser(
         "serve",
-        help="Inicia o daemon VisionFlow (servidor de comandos)",
+        help="Inicia o daemon LocalWhispr (servidor de comandos)",
     )
     p_serve.add_argument("-c", "--config", help="Caminho para config.yaml", default=None)
     p_serve.add_argument(
@@ -150,8 +150,8 @@ def main() -> None:
         parser.print_help()
         print()
         print("Início rápido:")
-        print("  1. visionflow serve --preload-model    # inicia o daemon")
-        print("  2. visionflow setup-shortcuts           # configura atalhos GNOME")
+        print("  1. localwhispr serve --preload-model    # inicia o daemon")
+        print("  2. localwhispr setup-shortcuts           # configura atalhos GNOME")
         print("  3. Use Ctrl+Shift+D para ditar, Ctrl+Shift+S para screenshot+IA, Ctrl+Shift+M para reunião")
         sys.exit(0)
 

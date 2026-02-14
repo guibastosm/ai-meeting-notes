@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 if TYPE_CHECKING:
-    from visionflow.config import OllamaConfig
+    from localwhispr.config import OllamaConfig
 
 
 def _capture_screenshot() -> bytes | None:
@@ -35,8 +35,8 @@ def _capture_screenshot() -> bytes | None:
         if img:
             return img
 
-    print("[visionflow] ERRO: Nenhum método de screenshot funcionou.")
-    print("[visionflow] No GNOME 49+, o VisionFlow usa PrintScreen + clipboard.")
+    print("[localwhispr] ERRO: Nenhum método de screenshot funcionou.")
+    print("[localwhispr] No GNOME 49+, o LocalWhispr usa PrintScreen + clipboard.")
     return None
 
 
@@ -64,13 +64,13 @@ def _screenshot_via_printscreen() -> bytes | None:
         )
 
         if result.returncode == 0 and len(result.stdout) > 100:
-            print(f"[visionflow] Screenshot via Shift+PrintScreen+clipboard ({len(result.stdout)} bytes)")
+            print(f"[localwhispr] Screenshot via Shift+PrintScreen+clipboard ({len(result.stdout)} bytes)")
             return result.stdout
 
         return None
 
     except Exception as e:
-        print(f"[visionflow] AVISO: screenshot via PrintScreen falhou: {e}")
+        print(f"[localwhispr] AVISO: screenshot via PrintScreen falhou: {e}")
         return None
 
 
@@ -104,7 +104,7 @@ class ScreenshotCommand:
     """Processa comandos de voz com contexto visual (screenshot)."""
 
     def __init__(self, config: OllamaConfig | None = None) -> None:
-        from visionflow.config import OllamaConfig as OC
+        from localwhispr.config import OllamaConfig as OC
 
         cfg = config or OC()
         self._base_url = cfg.base_url.rstrip("/")
@@ -119,14 +119,14 @@ class ScreenshotCommand:
         screenshot_bytes = _capture_screenshot()
 
         if screenshot_bytes is None:
-            print("[visionflow] Executando comando sem screenshot...")
+            print("[localwhispr] Executando comando sem screenshot...")
             return self._text_only_command(voice_command)
 
         # Codifica em base64 para a API do Ollama
         screenshot_b64 = base64.b64encode(screenshot_bytes).decode("utf-8")
 
-        print(f"[visionflow] Screenshot capturado ({len(screenshot_bytes)} bytes)")
-        print(f"[visionflow] Comando de voz: {voice_command[:80]}...")
+        print(f"[localwhispr] Screenshot capturado ({len(screenshot_bytes)} bytes)")
+        print(f"[localwhispr] Comando de voz: {voice_command[:80]}...")
 
         try:
             response = httpx.post(
@@ -155,14 +155,14 @@ class ScreenshotCommand:
             result = data.get("response", "").strip()
 
             if result:
-                print(f"[visionflow] Resposta da IA: {result[:100]}...")
+                print(f"[localwhispr] Resposta da IA: {result[:100]}...")
             return result
 
         except httpx.ConnectError:
-            print("[visionflow] ERRO: Não foi possível conectar ao Ollama.")
+            print("[localwhispr] ERRO: Não foi possível conectar ao Ollama.")
             return f"[ERRO: Ollama não está acessível em {self._base_url}]"
         except Exception as e:
-            print(f"[visionflow] ERRO no comando com screenshot: {e}")
+            print(f"[localwhispr] ERRO no comando com screenshot: {e}")
             return f"[ERRO: {e}]"
 
     def _text_only_command(self, voice_command: str) -> str:
@@ -185,5 +185,5 @@ class ScreenshotCommand:
             data = response.json()
             return data.get("response", "").strip()
         except Exception as e:
-            print(f"[visionflow] ERRO no comando de texto: {e}")
+            print(f"[localwhispr] ERRO no comando de texto: {e}")
             return f"[ERRO: {e}]"

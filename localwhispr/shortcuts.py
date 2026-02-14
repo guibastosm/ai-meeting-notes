@@ -1,4 +1,4 @@
-"""Configura atalhos de teclado do GNOME para o VisionFlow."""
+"""Configura atalhos de teclado do GNOME para o LocalWhispr."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ SCHEMA = "org.gnome.settings-daemon.plugins.media-keys"
 KEY = "custom-keybindings"
 BASE_PATH = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings"
 
-# Encontra o binário visionflow no PATH
-VISIONFLOW_BIN = shutil.which("visionflow")
+# Encontra o binário localwhispr no PATH
+VISIONFLOW_BIN = shutil.which("localwhispr")
 
 
 def _run_gsettings(*args: str) -> str:
@@ -46,12 +46,12 @@ def _get_existing_custom_keybindings() -> list[str]:
         return []
 
 
-def _find_visionflow_slots(existing: list[str]) -> dict[str, str]:
-    """Encontra slots já usados pelo VisionFlow."""
+def _find_localwhispr_slots(existing: list[str]) -> dict[str, str]:
+    """Encontra slots já usados pelo LocalWhispr."""
     slots = {}
     for path in existing:
         name = _run_dconf("read", f"{path}name")
-        if "VisionFlow" in name:
+        if "LocalWhispr" in name:
             cmd = _run_dconf("read", f"{path}command")
             if "dictate" in cmd:
                 slots["dictate"] = path
@@ -90,11 +90,11 @@ def setup_gnome_shortcuts(
     screenshot_binding: str = "<Ctrl><Shift>s",
     meeting_binding: str = "<Ctrl><Shift>m",
 ) -> None:
-    """Registra (ou atualiza) atalhos do GNOME para VisionFlow."""
+    """Registra (ou atualiza) atalhos do GNOME para LocalWhispr."""
     # Verifica se gsettings/dconf estão disponíveis
     if not shutil.which("gsettings") or not shutil.which("dconf"):
-        print("[visionflow] ERRO: gsettings ou dconf não encontrado.")
-        print("[visionflow] Instale com: sudo pacman -S dconf")
+        print("[localwhispr] ERRO: gsettings ou dconf não encontrado.")
+        print("[localwhispr] Instale com: sudo pacman -S dconf")
         sys.exit(1)
 
     # Determina o comando base
@@ -105,56 +105,56 @@ def setup_gnome_shortcuts(
         import os
         venv = os.environ.get("VIRTUAL_ENV")
         if venv:
-            base_cmd = f"{venv}/bin/visionflow"
+            base_cmd = f"{venv}/bin/localwhispr"
         else:
-            base_cmd = "visionflow"
+            base_cmd = "localwhispr"
 
     dictate_cmd = f"{base_cmd} ctl dictate"
     screenshot_cmd = f"{base_cmd} ctl screenshot"
     meeting_cmd = f"{base_cmd} ctl meeting"
 
     existing = _get_existing_custom_keybindings()
-    vf_slots = _find_visionflow_slots(existing)
+    vf_slots = _find_localwhispr_slots(existing)
 
     new_paths = list(existing)
 
     # --- Atalho de ditado ---
     if "dictate" in vf_slots:
         path = vf_slots["dictate"]
-        print(f"[visionflow] Atualizando atalho de ditado em {path}")
+        print(f"[localwhispr] Atualizando atalho de ditado em {path}")
     else:
         idx = _next_slot_index(new_paths)
         path = f"{BASE_PATH}/custom{idx}/"
         new_paths.append(path)
-        print(f"[visionflow] Criando atalho de ditado em {path}")
+        print(f"[localwhispr] Criando atalho de ditado em {path}")
 
-    _write_keybinding(path, "VisionFlow Ditado", dictate_cmd, dictate_binding)
+    _write_keybinding(path, "LocalWhispr Ditado", dictate_cmd, dictate_binding)
     print(f"  → {dictate_binding} → {dictate_cmd}")
 
     # --- Atalho de screenshot ---
     if "screenshot" in vf_slots:
         path = vf_slots["screenshot"]
-        print(f"[visionflow] Atualizando atalho de screenshot em {path}")
+        print(f"[localwhispr] Atualizando atalho de screenshot em {path}")
     else:
         idx = _next_slot_index(new_paths)
         path = f"{BASE_PATH}/custom{idx}/"
         new_paths.append(path)
-        print(f"[visionflow] Criando atalho de screenshot em {path}")
+        print(f"[localwhispr] Criando atalho de screenshot em {path}")
 
-    _write_keybinding(path, "VisionFlow Screenshot", screenshot_cmd, screenshot_binding)
+    _write_keybinding(path, "LocalWhispr Screenshot", screenshot_cmd, screenshot_binding)
     print(f"  → {screenshot_binding} → {screenshot_cmd}")
 
     # --- Atalho de meeting ---
     if "meeting" in vf_slots:
         path = vf_slots["meeting"]
-        print(f"[visionflow] Atualizando atalho de meeting em {path}")
+        print(f"[localwhispr] Atualizando atalho de meeting em {path}")
     else:
         idx = _next_slot_index(new_paths)
         path = f"{BASE_PATH}/custom{idx}/"
         new_paths.append(path)
-        print(f"[visionflow] Criando atalho de meeting em {path}")
+        print(f"[localwhispr] Criando atalho de meeting em {path}")
 
-    _write_keybinding(path, "VisionFlow Meeting", meeting_cmd, meeting_binding)
+    _write_keybinding(path, "LocalWhispr Meeting", meeting_cmd, meeting_binding)
     print(f"  → {meeting_binding} → {meeting_cmd}")
 
     # --- Atualiza lista de custom keybindings ---
@@ -165,8 +165,8 @@ def setup_gnome_shortcuts(
     )
 
     print()
-    print("[visionflow] Atalhos configurados com sucesso!")
-    print("[visionflow] Você pode verificar em: Configurações > Teclado > Atalhos > Atalhos Personalizados")
+    print("[localwhispr] Atalhos configurados com sucesso!")
+    print("[localwhispr] Você pode verificar em: Configurações > Teclado > Atalhos > Atalhos Personalizados")
     print()
     print("  Ditado (toggle):    " + dictate_binding)
     print("  Screenshot + IA:    " + screenshot_binding)

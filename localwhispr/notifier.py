@@ -1,11 +1,11 @@
-"""Notificações de status do VisionFlow via libnotify e sons."""
+"""Notificações de status do LocalWhispr via libnotify e sons."""
 
 from __future__ import annotations
 
 import subprocess
 import shutil
 
-from visionflow.config import NotificationConfig
+from localwhispr.config import NotificationConfig
 
 
 def _has_command(cmd: str) -> bool:
@@ -23,7 +23,7 @@ def notify(title: str, body: str = "", config: NotificationConfig | None = None)
     try:
         cmd = [
             "notify-send",
-            "--app-name=VisionFlow",
+            "--app-name=LocalWhispr",
             "--transient",
             "--urgency=low",
             title,
@@ -68,5 +68,5 @@ def notify_done(text: str, config: NotificationConfig | None = None) -> None:
 
 def notify_error(error: str, config: NotificationConfig | None = None) -> None:
     # Erro sim merece notificação visual + som
-    notify("VisionFlow - Erro", error, config)
+    notify("LocalWhispr - Erro", error, config)
     play_sound("dialog-error", config)

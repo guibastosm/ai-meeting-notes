@@ -8,7 +8,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from visionflow.config import TypingConfig
+    from localwhispr.config import TypingConfig
 
 
 def _has_command(cmd: str) -> bool:
@@ -19,7 +19,7 @@ class Typer:
     """Digita texto no app atualmente focado usando ferramentas do Wayland."""
 
     def __init__(self, config: TypingConfig | None = None) -> None:
-        from visionflow.config import TypingConfig as TC
+        from localwhispr.config import TypingConfig as TC
 
         cfg = config or TC()
         self._method = cfg.method
@@ -31,7 +31,7 @@ class Typer:
             return
 
         if self._method == "ydotool" and not _has_command("ydotool"):
-            print("[visionflow] AVISO: ydotool não encontrado, tentando wtype...")
+            print("[localwhispr] AVISO: ydotool não encontrado, tentando wtype...")
             if _has_command("wtype"):
                 self._method = "wtype"
             else:
@@ -40,7 +40,7 @@ class Typer:
                     "Instale ydotool ou wtype: sudo pacman -S ydotool wtype"
                 )
         elif self._method == "wtype" and not _has_command("wtype"):
-            print("[visionflow] AVISO: wtype não encontrado, tentando ydotool...")
+            print("[localwhispr] AVISO: wtype não encontrado, tentando ydotool...")
             if _has_command("ydotool"):
                 self._method = "ydotool"
             else:
@@ -73,20 +73,20 @@ class Typer:
             if result.returncode != 0:
                 stderr = result.stderr.decode().strip()
                 if "failed to connect" in stderr.lower() or "socket" in stderr.lower():
-                    print("[visionflow] ERRO: ydotoold não está rodando.")
-                    print("[visionflow] Execute: systemctl --user enable --now ydotool")
+                    print("[localwhispr] ERRO: ydotoold não está rodando.")
+                    print("[localwhispr] Execute: systemctl --user enable --now ydotool")
                     # Fallback para clipboard
                     self._type_clipboard(text)
                 else:
-                    print(f"[visionflow] ERRO ydotool: {stderr}")
+                    print(f"[localwhispr] ERRO ydotool: {stderr}")
                     self._type_clipboard(text)
         except FileNotFoundError:
-            print("[visionflow] ERRO: ydotool não encontrado.")
+            print("[localwhispr] ERRO: ydotool não encontrado.")
             self._type_clipboard(text)
         except subprocess.TimeoutExpired:
-            print("[visionflow] ERRO: ydotool timeout.")
+            print("[localwhispr] ERRO: ydotool timeout.")
         except Exception as e:
-            print(f"[visionflow] ERRO ydotool: {e}")
+            print(f"[localwhispr] ERRO ydotool: {e}")
             self._type_clipboard(text)
 
     def _type_wtype(self, text: str) -> None:
@@ -98,10 +98,10 @@ class Typer:
                 timeout=30,
             )
             if result.returncode != 0:
-                print(f"[visionflow] ERRO wtype: {result.stderr.decode().strip()}")
+                print(f"[localwhispr] ERRO wtype: {result.stderr.decode().strip()}")
                 self._type_clipboard(text)
         except Exception as e:
-            print(f"[visionflow] ERRO wtype: {e}")
+            print(f"[localwhispr] ERRO wtype: {e}")
             self._type_clipboard(text)
 
     def _type_clipboard(self, text: str) -> None:
@@ -110,10 +110,10 @@ class Typer:
         O wl-copy fica vivo para manter o texto no clipboard,
         permitindo que o usuário cole novamente com Ctrl+V.
         """
-        print("[visionflow] Digitando via clipboard + Ctrl+V")
+        print("[localwhispr] Digitando via clipboard + Ctrl+V")
         try:
             if not _has_command("wl-copy"):
-                print("[visionflow] ERRO: wl-copy não encontrado. Instale: sudo pacman -S wl-clipboard")
+                print("[localwhispr] ERRO: wl-copy não encontrado. Instale: sudo pacman -S wl-clipboard")
                 return
 
             # Mata o wl-copy anterior (se existir) antes de iniciar novo
@@ -149,13 +149,13 @@ class Typer:
                 paste_ok = result.returncode == 0
 
             if not paste_ok:
-                print("[visionflow] AVISO: falha ao simular Ctrl+V. Texto está no clipboard, cole manualmente.")
+                print("[localwhispr] AVISO: falha ao simular Ctrl+V. Texto está no clipboard, cole manualmente.")
 
             # NÃO mata o wl-copy — ele fica vivo para o clipboard persistir.
             # Será morto apenas quando um novo texto for copiado.
 
         except Exception as e:
-            print(f"[visionflow] ERRO no clipboard: {e}")
+            print(f"[localwhispr] ERRO no clipboard: {e}")
 
     def _kill_prev_wl_copy(self) -> None:
         """Mata o processo wl-copy anterior, se existir."""
