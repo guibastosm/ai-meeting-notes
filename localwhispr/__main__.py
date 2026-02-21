@@ -77,6 +77,12 @@ def cmd_ctl(args: argparse.Namespace) -> None:
     ctl_main(args.command)
 
 
+def cmd_overlay(args: argparse.Namespace) -> None:
+    """Launch the recording overlay manually."""
+    from localwhispr.overlay import run_overlay
+    run_overlay(args.mic_wav, args.system_wav, args.start_time)
+
+
 def cmd_setup_shortcuts(args: argparse.Namespace) -> None:
     """Register keyboard shortcuts in GNOME, using config.yaml as source."""
     from localwhispr.config import load_config
@@ -124,6 +130,16 @@ def main() -> None:
     )
     p_ctl.add_argument("command", nargs="*", help="Command to send")
     p_ctl.set_defaults(func=cmd_ctl)
+
+    # --- overlay ---
+    p_overlay = subparsers.add_parser(
+        "overlay",
+        help="Launch the recording overlay (for debugging / manual use)",
+    )
+    p_overlay.add_argument("--mic-wav", required=True, help="Path to the mic WAV file being recorded")
+    p_overlay.add_argument("--system-wav", required=True, help="Path to the system WAV file being recorded")
+    p_overlay.add_argument("--start-time", default=None, help="Recording start time (ISO format)")
+    p_overlay.set_defaults(func=cmd_overlay)
 
     # --- setup-shortcuts ---
     p_shortcuts = subparsers.add_parser(

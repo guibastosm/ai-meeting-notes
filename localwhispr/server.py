@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shutil
 import signal
+import subprocess
 import sys
 from pathlib import Path
 
@@ -146,6 +148,7 @@ class LocalWhisprApp:
         self._mode: str = ""  # "dictate", "screenshot", or "meeting"
         self._meeting_recorder = None
         self._dual_recorder = None  # DualRecorder for dictate with monitor
+        self._overlay_proc: subprocess.Popen | None = None
 
     def toggle_dictation(self) -> str:
         """Toggle dictation recording."""
@@ -221,6 +224,7 @@ class LocalWhisprApp:
     def force_stop(self) -> str:
         """Stop recording without processing."""
         if self._recording and self._mode == "meeting" and self._meeting_recorder:
+            self._kill_overlay()
             self._meeting_recorder.stop()
             self._meeting_recorder = None
             self._recording = False
@@ -390,6 +394,62 @@ class LocalWhisprApp:
             self._processing = False
             self._mode = ""
 
+    # -- Overlay management --------------------------------------------------
+
+    def _spawn_overlay(self) -> None:
+        """Launch the GTK4 recording overlay as a child process.
+
+        Uses the system Python (not the venv) so that PyGObject/GTK4
+        bindings are available.  PYTHONPATH is set so the overlay can
+        import ``localwhispr.audio_monitor``.
+        """
+        if not self._meeting_config or not self._meeting_config.overlay:
+            return
+        if not self._meeting_recorder:
+            return
+
+        mic_path = self._meeting_recorder.mic_path
+        monitor_path = self._meeting_recorder.monitor_path
+        started_at = self._meeting_recorder.started_at
+
+        if not mic_path or not monitor_path:
+            return
+
+        system_python = shutil.which("python3") or sys.executable
+        project_root = str(Path(__file__).resolve().parent.parent)
+
+        try:
+            cmd = [
+                system_python, "-m", "localwhispr.overlay",
+                "--mic-wav", str(mic_path),
+                "--system-wav", str(monitor_path),
+            ]
+            if started_at:
+                cmd.extend(["--start-time", started_at.isoformat()])
+
+            env = {**os.environ, "PYTHONPATH": project_root}
+
+            self._overlay_proc = subprocess.Popen(cmd, env=env)
+            print(f"[localwhispr] Overlay started (pid={self._overlay_proc.pid})",
+                  flush=True)
+        except Exception as e:
+            print(f"[localwhispr] WARNING: failed to start overlay: {e}",
+                  flush=True)
+            self._overlay_proc = None
+
+    def _kill_overlay(self) -> None:
+        """Terminate the overlay process if running."""
+        if self._overlay_proc and self._overlay_proc.poll() is None:
+            try:
+                self._overlay_proc.terminate()
+                self._overlay_proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self._overlay_proc.kill()
+            except Exception:
+                pass
+            print("[localwhispr] Overlay closed")
+        self._overlay_proc = None
+
     # -- Meeting mode --------------------------------------------------------
 
     def _start_meeting(self) -> str:
@@ -411,7 +471,10 @@ class LocalWhisprApp:
         self._recording = True
 
         play_sound("device-added", self._notif)
-        print(f"[localwhispr] ● Recording meeting in {output_dir}")
+        print(f"[localwhispr] ● Recording meeting in {output_dir}", flush=True)
+
+        self._spawn_overlay()
+
         return "OK meeting_recording"
 
     def _stop_and_process_meeting(self) -> str:
@@ -423,6 +486,8 @@ class LocalWhisprApp:
             self._recording = False
             self._mode = ""
             return "ERR no_meeting_recorder"
+
+        self._kill_overlay()
 
         print("[localwhispr] ■ Stopping meeting recording...")
         play_sound("device-removed", self._notif)

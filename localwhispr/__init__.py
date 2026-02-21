@@ -14,7 +14,10 @@ def _preload_cuda_libs() -> None:
     """Pre-load NVIDIA pip libs (cublas/cudnn) before ctranslate2."""
     lib_dirs: list[str] = []
     for pkg in ("nvidia.cublas.lib", "nvidia.cudnn.lib"):
-        spec = importlib.util.find_spec(pkg)
+        try:
+            spec = importlib.util.find_spec(pkg)
+        except (ModuleNotFoundError, ValueError):
+            continue
         if spec and spec.submodule_search_locations:
             for p in spec.submodule_search_locations:
                 if p not in lib_dirs:

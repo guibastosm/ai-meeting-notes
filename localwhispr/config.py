@@ -72,6 +72,7 @@ class MeetingConfig:
     mic_source: str = "auto"
     monitor_source: str = "auto"
     sample_rate: int = 16000
+    overlay: bool = True
     summary_model: str = "llama3.2"
     summary_prompt: str = (
         "You are a meeting minutes assistant.\n"

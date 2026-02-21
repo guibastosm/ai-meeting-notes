@@ -106,6 +106,18 @@ class MeetingRecorder:
     def is_recording(self) -> bool:
         return self._recording
 
+    @property
+    def mic_path(self) -> Path | None:
+        return self._mic_path
+
+    @property
+    def monitor_path(self) -> Path | None:
+        return self._monitor_path
+
+    @property
+    def started_at(self) -> datetime | None:
+        return self._started_at
+
     def start(self) -> Path:
         """Start dual recording. Returns the output directory."""
         if self._recording:
